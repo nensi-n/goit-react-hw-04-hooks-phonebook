@@ -1,4 +1,4 @@
-import React from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 import ContactForm from "./components/ContactForm/ContactForm";
 import ContactList from "./components/ContactList/ContactList";
@@ -7,8 +7,8 @@ import shortid from "shortid";
 import Filter from "./components/Filter/Filter";
 import contactFilter from "./utils/filter";
 
-class App extends React.Component {
-  state = {
+function App() {
+  const [state, setState] = useState({
     contacts: [
       { id: "id-1", name: "Rosie Simpson", number: "459-12-56" },
       { id: "id-2", name: "Hermione Kline", number: "443-89-12" },
@@ -16,61 +16,68 @@ class App extends React.Component {
       { id: "id-4", name: "Annie Copeland", number: "227-91-26" },
     ],
     filter: "",
-  };
+  });
 
-  componentDidMount() {
+  useEffect(() => {
     const contacts = localStorage.getItem("contacts");
     const parsedContacts = JSON.parse(contacts);
 
     if (parsedContacts) {
-      this.setState({ contacts: parsedContacts });
+      setState((prevState) => ({ ...prevState, contacts: parsedContacts }));
     }
-  }
+  }, []);
 
-  componentDidUpdate(prevProps, prevState) {
-    const nextContacts = this.state.contacts;
-    const prevContacts = prevState.contacts;
-
-    if (nextContacts !== prevContacts) {
-      localStorage.setItem("contacts", JSON.stringify(nextContacts));
+  const addContact = (contact) => {
+    const contacts = JSON.parse(localStorage.getItem("contacts"));
+    const newContact = { id: shortid.generate(), ...contact };
+    if (contacts) {
+      localStorage.setItem(
+        "contacts",
+        JSON.stringify([...contacts, newContact])
+      );
+    } else {
+      localStorage.setItem(
+        "contacts",
+        JSON.stringify([...state.contacts, newContact])
+      );
     }
-  }
-
-  handleSubmiteForme = (contact) => {
-    this.state.contacts.some(({ name }) => name === contact.name)
-      ? alert("Contact alredy exists")
-      : this.setState((prevState) => ({
-          contacts: [
-            ...prevState.contacts,
-            { id: shortid.generate(), ...contact },
-          ],
-        }));
-  };
-
-  removeContact = (id) => {
-    this.setState((prevState) => ({
-      contacts: prevState.contacts.filter((contact) => contact.id !== id),
+    setState((prevState) => ({
+      ...prevState,
+      contacts: [...prevState.contacts, newContact],
     }));
   };
 
-  handleChangeFilter = ({ target: { name, value } }) => {
-    this.setState({ [name]: value });
+  const handleSubmiteForme = (contact) => {
+    state.contacts.some(({ name }) => name === contact.name)
+      ? alert("Contact alredy exists")
+      : addContact(contact);
   };
 
-  render() {
-    return (
-      <Container>
-        <h1>Phonebook</h1>
-        <ContactForm onSubmite={this.handleSubmiteForme} />
-        <h2>Contacts</h2>
-        <Filter value={this.state.filter} onChange={this.handleChangeFilter} />
-        <ContactList
-          onDelete={this.removeContact}
-          contacts={contactFilter(this.state.contacts, this.state.filter)}
-        />
-      </Container>
-    );
-  }
+  const removeContact = (id) => {
+    const newContacts = state.contacts.filter((contact) => contact.id !== id);
+    setState((prevState) => ({
+      ...prevState,
+      contacts: newContacts,
+    }));
+    localStorage.setItem("contacts", JSON.stringify(newContacts));
+  };
+
+  const handleChangeFilter = ({ target: { name, value } }) => {
+    setState((prevState) => ({ ...prevState, [name]: value }));
+  };
+
+  return (
+    <Container>
+      <h1>Phonebook</h1>
+      <ContactForm onSubmite={handleSubmiteForme} />
+      <h2>Contacts</h2>
+      <Filter value={state.filter} onChange={handleChangeFilter} />
+      <ContactList
+        onDelete={removeContact}
+        contacts={contactFilter(state.contacts, state.filter)}
+      />
+    </Container>
+  );
 }
 
 export default App;
